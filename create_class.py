@@ -53,7 +53,7 @@ def create_class(name, namespace=None, baseclass=None, is_interface=False):
 
     prog_path = os.path.dirname(__file__)
     try:
-        template_file = os.path.join(prog_path, 'templates', 'class.tpl')
+        template_file = os.path.join(prog_path, 'templates', 'class.h.tpl')
         template_str = open(template_file).read()
     except:
         raise OverheadOptimizerException('Could not open template file ' + \
