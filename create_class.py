@@ -27,6 +27,17 @@ class ClassTemplateProcessor(object):
             return '} // namespace %s' % ns_name
         return '\n'.join(ns_end(ns) for ns in reversed(self.namespaces))
 
+    def guard_str(self):
+        s = self.config.get('guardformat')
+        s = s.replace('$PROJECT', self.config.get('project'))
+        s = s.replace('$FILENAME', self.class_name + '.h')
+        s = s.replace('$CLASS', self.class_name)
+        s = s.replace('$PATH', self.config.get('headerfolder'))
+        s = s.replace('$MD5', 'MD5notyet')
+        s = re.sub('[^a-zA-Z0-9_]', '_', s)
+        s = s.replace('__', '_').upper()
+        return s
+
     def process_variable(self, variable_name):
         if variable_name == 'NAMESPACES_BEG':
             return self.namespaces_begin_str()
@@ -36,8 +47,10 @@ class ClassTemplateProcessor(object):
             return self.class_name
         if variable_name == 'INHERITANCE':
             return ': public %s' % self.baseclass if self.baseclass else ''
+        if variable_name == 'GUARD':
+            return self.guard_str()
 
-        return '[%s notImplemented]' % variable_name
+        return '[%s not implemented]' % variable_name
 
     def set_baseclass(self, baseclass):
         self.baseclass = baseclass

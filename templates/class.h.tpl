@@ -1,5 +1,5 @@
-#ifndef _##GPROJECT###GCLASS_NAME#_H_
-#define _##GPROJECT###GCLASS_NAME#_H_
+#ifndef ##GUARD#
+#define ##GUARD#
 
 // system includes
 
@@ -21,4 +21,4 @@ public:
 
 ##NAMESPACES_END#
 
-#endif // _##GPROJECT###GCLASS_NAME#_H_
+#endif // ##GUARD#

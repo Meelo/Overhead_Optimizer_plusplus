@@ -5,7 +5,7 @@ project=
 # Default 32
 md5len=32
 
-# guard styles: Defines how class name is formated in guards.
+# guard styles: Defines how class name is formatted in guards.
 # Options: underscore, nounderscore (Default: underscore)
 guardstyle=underscore
 
