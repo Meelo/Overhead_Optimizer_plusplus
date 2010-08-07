@@ -24,4 +24,6 @@ sourcefolder=src/
 # Default: none
 defaultnamespace=
 
-
+# indent: Define what is used for indenting. This option takes in
+# string containing the indentation string. Default is 4 spaces. Use \t for tab.
+indent="    "

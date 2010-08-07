@@ -13,6 +13,7 @@ class OverheadOptimizerException(Exception):
 class ClassTemplateProcessor(object):
     def __init__(self, template_str):
         self.template_str = template_str
+# example:
         self.namespaces = []
 
     def use_namespaces(self, namespaces):
@@ -66,10 +67,10 @@ def create_class(name, namespace=None, baseclass=None, is_interface=False):
         ctp.use_namespaces(namespace.split('::'))
     ctp.is_interface = is_interface
 
-    class_cpp = open('%s.cpp' % name, 'w')
+    class_h = open('%s.h' % name, 'w')
     class_str = re.sub('##([^#]+)#', ctp.process_variable, template_str)
-    class_cpp.write(class_str)
-    class_cpp.close()
+    class_h.write(class_str)
+    class_h.close()
 
 
 if __name__ == '__main__':
