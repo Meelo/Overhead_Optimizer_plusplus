@@ -1,3 +1,6 @@
+# project name
+project=
+
 # MD5 length: Defines how many digits of MD5 will be placed in guards, if used.
 # Default 32
 md5len=32
@@ -7,18 +10,18 @@ md5len=32
 guardstyle=underscore
 
 # guard format: Defines how guards are formated.
-# Valid variables: PROJECT, CLASS, FILENAME, PATH, MD5
-# Default: _PROJECT_NAME_FILENAME_
+# Valid variables: $PROJECT, $CLASS, $FILENAME, $PATH, $MD5
+# Default: _$PROJECT_$FILENAME_
 guardformat=_$PROJECT_$FILENAME_
 
-# project root: Path to your project. default is cwd
-projectroot=cwd
+# project root: Path to your project. default is . (current working dir)
+projectroot=.
 
 # include/header folder: Where header-files are placed, relative to project root
-headerfolder=include/
+headerfolder=include
 
 # source folder: Where source-files are placed, relative to project root
-sourcefolder=src/
+sourcefolder=src
 
 # default namespace: Under which namespace all new files are placed automatically.
 # Default: none
