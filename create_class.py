@@ -2,18 +2,74 @@
 # -*- coding: utf-8 -*-
 
 from optparse import OptionParser
+import os.path
+import re
 
-def create_class(name, namespace, baseclass, interface):
 
-    # TODO: real action
+class OverheadOptimizerException(Exception):
+    pass
 
-    print 'Creating class:', name
+
+class ClassTemplateProcessor(object):
+    def __init__(self, template_str):
+        self.template_str = template_str
+        self.namespaces = []
+
+    def use_namespaces(self, namespaces):
+        self.namespaces = namespaces
+
+    def namespaces_begin_str(self):
+        def ns_begin(ns_name):
+            return 'namespace %s\n{' % ns_name
+        return '\n'.join(ns_begin(ns) for ns in self.namespaces)
+
+    def namespaces_end_str(self):
+        def ns_end(ns_name):
+            return '} // namespace %s' % ns_name
+        return '\n'.join(ns_end(ns) for ns in reversed(self.namespaces))
+
+    def process_variable(self, variable_match):
+        variable_name = variable_match.group(1)
+
+        if variable_name == 'NAMESPACES_BEG':
+            return self.namespaces_begin_str()
+        if variable_name == 'NAMESPACES_END':
+            return self.namespaces_end_str()
+        if variable_name == 'CLASS_NAME':
+            return self.class_name
+        if variable_name == 'INHERITANCE':
+            return ': public %s' % self.baseclass if self.baseclass else ''
+
+        return '[%s notImplemented]' % variable_name
+
+    def set_baseclass(self, baseclass):
+        self.baseclass = baseclass
+
+    def set_class_name(self, class_name):
+        self.class_name = class_name
+
+
+def create_class(name, namespace=None, baseclass=None, is_interface=False):
+
+    prog_path = os.path.dirname(__file__)
+    try:
+        template_file = os.path.join(prog_path, 'templates', 'class.tpl')
+        template_str = open(template_file).read()
+    except:
+        raise OverheadOptimizerException('Could not open template file ' + \
+                                         '"%s"' % template_file)
+
+    ctp = ClassTemplateProcessor(template_str)
+    ctp.set_class_name(name)
+    ctp.set_baseclass(baseclass)
     if namespace:
-        print ' - using namespace:', namespace
-    if baseclass:
-        print ' - inherited from baseclass:', baseclass
-    if interface:
-        print ' - is interface'
+        ctp.use_namespaces(namespace.split('::'))
+    ctp.is_interface = is_interface
+
+    class_cpp = open('%s.cpp' % name, 'w')
+    class_str = re.sub('##([^#]+)#', ctp.process_variable, template_str)
+    class_cpp.write(class_str)
+    class_cpp.close()
 
 
 if __name__ == '__main__':
