@@ -14,12 +14,8 @@ md5len=6
 #                class name, an underscore will be placed as a delimiter.
 filenameformat=classname
 
-# guard styles: Defines how class name is formatted in guards.
-# Options: underscore, nounderscore (Default: underscore)
-guardstyle=underscore
-
 # guard format: Defines how guards are formated.
-# Valid variables: $PROJECT, $CLASS, $FILENAME, $PATH, $MD5
+# Valid variables: $PROJECT, $CLASS, $FILENAME, $FILE_NAME, $PATH, $MD5
 # Default: _$PROJECT_$FILENAME_
 guardformat=_$PROJECT_$FILENAME_$MD5_
 

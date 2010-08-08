@@ -33,11 +33,12 @@ class ClassTemplateProcessor(object):
         return '\n'.join(ns_end(ns) for ns in reversed(self.namespaces))
 
     def guard_str(self):
-        to_hash = self.config.get('project') + self.class_name + str(time.time)
+        to_hash = self.config.get('project') + self.class_name + str(time.time())
         md5_hash = md5(to_hash).hexdigest()[:self.config.get('md5len')]
         s = self.config.get('guardformat')
         s = s.replace('$PROJECT', self.config.get('project'))
         s = s.replace('$FILENAME', self.class_name + '.h')
+        s = s.replace('$FILE_NAME', re.sub('([A-Z])', r'_\1', self.class_name))
         s = s.replace('$CLASS', self.class_name)
         s = s.replace('$PATH', self.config.get('headerfolder'))
         s = s.replace('$MD5', md5_hash)
@@ -88,12 +89,6 @@ class OverheadOptimizerConfig(object):
             pass
         return False
 
-    def setvar_guardstyle(self, value):
-        if value in ('underscore', 'nounderscore'):
-            self.values['guardstyle'] = value
-            return True
-        return False
-
     def setvar_guardformat(self, value):
         self.values['guardformat'] = value
         return True
@@ -135,7 +130,6 @@ class OverheadOptimizerConfig(object):
         self.values = {}
         self.setvar_md5len(32)
         self.setvar_filenameformat('classname')
-        self.setvar_guardstyle('underscore')
         self.setvar_guardformat('_$PROJECT_$FILENAME_')
         self.setvar_project('')
         self.setvar_projectroot('.')
