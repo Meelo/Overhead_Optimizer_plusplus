@@ -226,7 +226,8 @@ class ClassCreator(object):
         if self.config.get('filenameformat') == 'lowercase':
             return self.class_name.lower()
         if self.config.get('filenameformat') == 'lower_case':
-            return re.sub('([A-Z])', r'\1', self.class_name).lower()
+            res = re.sub('([A-Z])', r'_\1', self.class_name).lower()
+            return res.lstrip('_')
         return self.class_name
 
     def init_header_file_name(self):
