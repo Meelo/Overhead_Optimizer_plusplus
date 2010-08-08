@@ -283,7 +283,15 @@ def parse_arguments():
     parser.add_option('-O', '--overwrite', dest='overwrite',
                       help='overwrite existing target files, otherwise ask',
                       action='store_true', default=False)
-    return parser.parse_args()
+    options, args = parser.parse_args()
+
+    # expect class name as only non-option argument
+    if len(args) != 1:
+        print 'Error: invalid arguments'
+        parser.print_help()
+        raise OverheadOptimizerException
+
+    return options, args
 
 def init_config(cwd, script_dir, config_file=None):
     default_filename = 'config'
@@ -319,12 +327,6 @@ def main():
     script_dir = os.path.abspath(os.path.dirname(__file__))
 
     config = init_config(cwd, script_dir, options.config_file)
-
-    # expect class name as only non-option argument
-    if len(args) != 1:
-        print 'Error: invalid arguments'
-        parser.print_help()
-        raise SystemExit
 
     class_name = args[0]
     cc = ClassCreator(class_name)
