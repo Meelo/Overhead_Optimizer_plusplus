@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from optparse import OptionParser
+import os
 import os.path
 import re
 import time
+import sys
 from hashlib import md5
 
 
@@ -13,8 +15,9 @@ class OverheadOptimizerException(Exception):
 
 
 class ClassTemplateProcessor(object):
-    def __init__(self):
+    def __init__(self, filename_base):
         self.namespaces = []
+        self.filename_base = filename_base # without .h or .cpp
 
     def use_namespaces(self, namespaces):
         self.namespaces = namespaces
@@ -50,10 +53,14 @@ class ClassTemplateProcessor(object):
             return self.namespaces_end_str()
         if variable_name == 'CLASS_NAME':
             return self.class_name
+        if variable_name == 'CLASS_FILENAME':
+            return self.filename_base
         if variable_name == 'INHERITANCE':
             return ': public %s' % self.baseclass if self.baseclass else ''
         if variable_name == 'GUARD':
             return self.guard_str()
+        if variable_name == 'INDENT':
+            return self.config.get('indent')
 
         return '[%s not implemented]' % variable_name
 
@@ -71,7 +78,7 @@ class OverheadOptimizerConfig(object):
     def __init__(self):
         self.init_values()
 
-    def set_md5len(self, value):
+    def setvar_md5len(self, value):
         try:
             value = int(value)
             if 1 <= value <= 32:
@@ -81,37 +88,43 @@ class OverheadOptimizerConfig(object):
             pass
         return False
 
-    def set_guardstyle(self, value):
+    def setvar_guardstyle(self, value):
         if value in ('underscore', 'nounderscore'):
             self.values['guardstyle'] = value
             return True
         return False
 
-    def set_guardformat(self, value):
+    def setvar_guardformat(self, value):
         self.values['guardformat'] = value
         return True
 
-    def set_project(self, value):
+    def setvar_project(self, value):
         self.values['project'] = value
         return True
 
-    def set_projectroot(self, value):
+    def setvar_projectroot(self, value):
         self.values['projectroot'] = value
         return True
 
-    def set_headerfolder(self, value):
+    def setvar_filenameformat(self, value):
+        if value in ('classname', 'lowercase', 'lower_case'):
+            self.values['filenameformat'] = value
+            return True
+        return False
+
+    def setvar_headerfolder(self, value):
         self.values['headerfolder'] = value
         return True
 
-    def set_sourcefolder(self, value):
+    def setvar_sourcefolder(self, value):
         self.values['sourcefolder'] = value
         return True
 
-    def set_defaultnamespace(self, value):
+    def setvar_defaultnamespace(self, value):
         self.values['defaultnamespace'] = value
         return True
 
-    def set_indent(self, value):
+    def setvar_indent(self, value):
         self.values['indent'] = value.strip("'").strip('"').replace('\\t', '\t')
         return True
 
@@ -120,27 +133,32 @@ class OverheadOptimizerConfig(object):
 
     def init_values(self):
         self.values = {}
-        self.set_md5len(32)
-        self.set_guardstyle('underscore')
-        self.set_guardformat('_$PROJECT_$FILENAME_')
-        self.set_project('')
-        self.set_projectroot('.')
-        self.set_headerfolder('include')
-        self.set_sourcefolder('src')
-        self.set_defaultnamespace('')
-        self.set_indent('    ')
+        self.setvar_md5len(32)
+        self.setvar_filenameformat('classname')
+        self.setvar_guardstyle('underscore')
+        self.setvar_guardformat('_$PROJECT_$FILENAME_')
+        self.setvar_project('')
+        self.setvar_projectroot('.')
+        self.setvar_headerfolder('include')
+        self.setvar_sourcefolder('src')
+        self.setvar_defaultnamespace('')
+        self.setvar_indent('    ')
 
-    def parse_config_file(self, filename):
+    def parse_config_file(self, filename, reset_config=True):
+        if reset_config:
+            self.init_values()
+
         def process_row(row):
             row = row.strip()
             if row.startswith('#') or len(row) == 0:
                 return
             try:
                 variable, value = row.split('=', 1)
-                getattr(self, 'set_' + variable)(value)
+                if not getattr(self, 'setvar_' + variable)(value):
+                    raise OverheadOptimizerException()
                 return
             except:
-                print 'invalid config file row:', row
+                print 'Warning: ignored invalid config file row:', row
                 pass
 
         try:
@@ -151,48 +169,108 @@ class OverheadOptimizerConfig(object):
         return True
 
 
-def create_class(name, namespace=None, baseclass=None, is_interface=False):
+class ClassCreator(object):
+    def __init__(self, class_name):
+        self.class_name = class_name
+        self.namespaces = []
+        self.is_interface = False
+        self.config = None
+        self.overwrite = False
 
-    config = OverheadOptimizerConfig()
-    config.parse_config_file('config.sample')
+    def add_namespace(self, namespace):
+        self.namespaces.append(namespace)
 
-    prog_path = os.path.dirname(__file__)
-    try:
-        h_template_file = os.path.join(prog_path, 'templates', 'class.h.tpl')
-        h_template_str = open(h_template_file).read()
-    except:
-        raise OverheadOptimizerException('Could not open template file ' + \
-                                         '"%s"' % h_template_file)
-    try:
-        c_template_file = os.path.join(prog_path, 'templates', 'class.cpp.tpl')
-        c_template_str = open(c_template_file).read()
-    except:
-        raise OverheadOptimizerException('Could not open template file ' + \
-                                         '"%s"' % c_template_file)
+    def use_config(self, config):
+        self.config = config
 
-    ctp = ClassTemplateProcessor()
-    ctp.set_config(config)
-    ctp.set_class_name(name)
-    ctp.set_baseclass(baseclass)
-    if namespace:
-        ctp.use_namespaces(namespace.split('::'))
-    ctp.is_interface = is_interface
+    def use_dirs(self, cwd, script_dir):
+        self.cwd = cwd
+        self.script_dir = script_dir
 
-    def process_variable(match):
-        return ctp.process_variable(match.group(1))
+    def create_file(self, target_filename, tpl_filename, template_processor):
+        # read template file
+        try:
+            template_str = open(tpl_filename).read()
+        except:
+            print "Error: Could not open template file '%s'" % tpl_filename
 
-    class_h = open('%s.h' % name, 'w')
-    class_str = re.sub('##([^#]+)#', process_variable, h_template_str)
-    class_h.write(class_str)
-    class_h.close()
+        if os.path.isfile(target_filename) and self.overwrite == False:
+            q = "Warning! Target '%s' exists. Overwrite? (Y)es/(N)o?" % \
+                target_filename
+            while True:
+                res = raw_input(q + ' ')[:1].lower()
+                if res == 'y':
+                    break
+                elif res == 'n':
+                    print 'Write cancelled'
+                    return
 
-    class_c = open('%s.cpp' % name, 'w')
-    class_str = re.sub('##([^#]+)#', process_variable, c_template_str)
-    class_c.write(class_str)
-    class_c.close()
+        def process_variable(match):
+            return template_processor.process_variable(match.group(1))
 
+        f = open(target_filename, 'w')
+        out_str = re.sub('##([^#]+)#', process_variable, template_str)
+        f.write(out_str)
+        f.close()
 
-if __name__ == '__main__':
+    def init_tpl_processor(self):
+        ctp = ClassTemplateProcessor(self.format_filename())
+        ctp.set_config(self.config)
+        ctp.set_class_name(self.class_name)
+        ctp.set_baseclass(self.baseclass)
+        ctp.use_namespaces(self.namespaces)
+        ctp.is_interface = self.is_interface
+        return ctp
+
+    def format_filename(self):
+        if self.config.get('filenameformat') == 'lowercase':
+            return self.class_name.lower()
+        if self.config.get('filenameformat') == 'lower_case':
+            return re.sub('([A-Z])', r'\1', self.class_name).lower()
+        return self.class_name
+
+    def init_header_file_name(self):
+        """Return header file name. Create directories if needed."""
+
+        path = os.path.abspath(self.config.get('projectroot'))
+        if not os.path.isdir(path):
+            os.mkdir(path, 0755)
+
+        path = os.path.join(path, self.config.get('headerfolder'))
+        if not os.path.isdir(path):
+            os.mkdir(path, 0755)
+
+        return os.path.join(path, self.format_filename() + '.h')
+
+    def init_class_file_name(self):
+        """Return header file name. Create directories if needed."""
+
+        path = os.path.abspath(self.config.get('projectroot'))
+        if not os.path.isdir(path):
+            os.mkdir(path, 0755)
+        path = os.path.join(path, self.config.get('sourcefolder'))
+        if not os.path.isdir(path):
+            os.mkdir(path, 0755)
+
+        return os.path.join(path, self.format_filename() + '.cpp')
+
+    def create_class_files(self):
+        if not self.config:
+            # use defaults
+            self.config = OverheadOptimizerConfig()
+
+        tp = self.init_tpl_processor()
+
+        tpl_dir = os.path.join(self.script_dir, 'templates')
+        tpl_files = ('class.h.tpl', 'class.cpp.tpl')
+        target_files = (self.init_header_file_name(), \
+                        self.init_class_file_name())
+
+        for target, tpl_file in zip(target_files, tpl_files):
+            tpl_filepath = os.path.join(tpl_dir, tpl_file)
+            self.create_file(target, tpl_filepath, tp)
+
+def parse_arguments():
     usage = 'usage: %prog class_name [options]'
     parser = OptionParser(usage=usage)
     parser.add_option('-n', '--namespace', dest='namespace',
@@ -204,14 +282,72 @@ if __name__ == '__main__':
     parser.add_option('-b', '--baseclass', dest='baseclass',
                       help='inherit new class from BASECLASS',
                       metavar='BASECLASS')
-    (options, args) = parser.parse_args()
+    parser.add_option('-c', '--config_file', dest='config_file',
+                      help='read config from CONFIG_FILE',
+                      metavar='CONFIG_FILE')
+    parser.add_option('-O', '--overwrite', dest='overwrite',
+                      help='overwrite existing target files, otherwise ask',
+                      action='store_true', default=False)
+    return parser.parse_args()
 
-    # expect class name as first and only argument
+def init_config(cwd, script_dir, config_file=None):
+    default_filename = 'config'
+    locations = [os.path.join(x, default_filename) for x in (cwd, script_dir)]
+    if config_file:
+        locations.insert(0, os.path.abspath(config_file))
+
+    config = OverheadOptimizerConfig()
+    for filename in locations:
+        if not os.path.isfile(filename):
+            continue
+        if config.parse_config_file(filename):
+            print "Using config file '%s'" % filename
+            return config
+
+    print "Error: Unable to find or open config file. Expecting " + \
+          "'%s' in current working dir, " % default_filename + \
+          "in script directory ('%s') " % script_dir + \
+          "or filename given with -c option."
+    raise OverheadOptimizerException()
+
+def get_namespaces(config, options_namespaces):
+    namespaces = []
+    if config.get('defaultnamespace'):
+        namespaces.extend(config.get('defaultnamespace').split('::'))
+    if options_namespaces:
+        namespaces.extend(options_namespaces.split('::'))
+    return namespaces
+
+def main():
+    options, args = parse_arguments()
+    cwd = os.getcwd()
+    script_dir = os.path.abspath(os.path.dirname(__file__))
+
+    config = init_config(cwd, script_dir, options.config_file)
+
+    # expect class name as only non-option argument
     if len(args) != 1:
         print 'Error: invalid arguments'
         parser.print_help()
         raise SystemExit
 
     class_name = args[0]
-    create_class(class_name, options.namespace, options.baseclass,
-                 options.interface)
+    cc = ClassCreator(class_name)
+    cc.use_config(config)
+
+    namespaces = get_namespaces(config, options.namespace)
+    for ns in namespaces:
+        cc.add_namespace(ns)
+
+    cc.is_interface = options.interface
+    cc.overwrite = options.overwrite
+    cc.baseclass = options.baseclass
+    cc.use_dirs(cwd, script_dir)
+
+    cc.create_class_files()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except OverheadOptimizerException:
+        sys.exit(-1)

@@ -1,9 +1,18 @@
-# project name
+# project name:
 project=
 
 # MD5 length: Defines how many digits of MD5 will be placed in guards, if used.
-# Default 32
+# Valid values: 1..32. Default 32
 md5len=6
+
+# filename format: Defines how filename is formatted when creating new files.
+# Options: classname, lowercase, lower_case
+# - classname: Filename without extension is the same as the class name.
+# (Class name is in the same format as you entered it.)
+# - lowercase: All letters in the class name will be in lowercase characters.
+# - lower_case: Same as above, but before each uppercase character in the
+# class name, an underscore will be placed as a delimiter.
+filenameformat=classname
 
 # guard styles: Defines how class name is formatted in guards.
 # Options: underscore, nounderscore (Default: underscore)
@@ -12,7 +21,7 @@ guardstyle=underscore
 # guard format: Defines how guards are formated.
 # Valid variables: $PROJECT, $CLASS, $FILENAME, $PATH, $MD5
 # Default: _$PROJECT_$FILENAME_
-guardformat=_$PROJECT_$FILENAME_$MD5
+guardformat=_$PROJECT_$FILENAME_$MD5_
 
 # project root: Path to your project. default is . (current working dir)
 projectroot=.
