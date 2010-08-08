@@ -12,11 +12,11 @@ class ##CLASS_NAME# ##INHERITANCE#
 
 public:
 
-    ##COMMENT#
-    ##CLASS_NAME#();
+##INDENT###COMMENT#
+##INDENT###CLASS_NAME#();
 
-    ##COMMENT#
-    virtual ~##CLASS_NAME#();
+##INDENT###COMMENT#
+##INDENT#virtual ~##CLASS_NAME#();
 };
 
 ##NAMESPACES_END#
