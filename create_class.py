@@ -4,6 +4,8 @@
 from optparse import OptionParser
 import os.path
 import re
+import time
+from hashlib import md5
 
 
 class OverheadOptimizerException(Exception):
@@ -28,14 +30,17 @@ class ClassTemplateProcessor(object):
         return '\n'.join(ns_end(ns) for ns in reversed(self.namespaces))
 
     def guard_str(self):
+        to_hash = self.config.get('project') + self.class_name + str(time.time)
+        md5_hash = md5(to_hash).hexdigest()[:self.config.get('md5len')]
         s = self.config.get('guardformat')
         s = s.replace('$PROJECT', self.config.get('project'))
         s = s.replace('$FILENAME', self.class_name + '.h')
         s = s.replace('$CLASS', self.class_name)
         s = s.replace('$PATH', self.config.get('headerfolder'))
-        s = s.replace('$MD5', 'MD5notyet')
+        s = s.replace('$MD5', md5_hash)
         s = re.sub('[^a-zA-Z0-9_]', '_', s)
-        s = s.replace('__', '_').upper()
+        s = re.sub('_+', '_', s)
+        s = s.upper()
         return s
 
     def process_variable(self, variable_name):
