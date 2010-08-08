@@ -257,9 +257,13 @@ class ClassCreator(object):
         tp = self.init_tpl_processor()
 
         tpl_dir = os.path.join(self.script_dir, 'templates')
-        tpl_files = ('class.h.tpl', 'class.cpp.tpl')
-        target_files = (self.init_header_file_name(), \
-                        self.init_class_file_name())
+        tpl_files = [ 'class.h.tpl', 'class.cpp.tpl' ]
+        target_files = [ self.init_header_file_name(), \
+                        self.init_class_file_name() ]
+
+        if self.is_interface:
+            tpl_files.remove('class.cpp.tpl')
+            target_files.remove(self.init_class_file_name())
 
         for target, tpl_file in zip(target_files, tpl_files):
             tpl_filepath = os.path.join(tpl_dir, tpl_file)
@@ -307,11 +311,8 @@ def init_config(cwd, script_dir, config_file=None):
             print "Using config file '%s'" % filename
             return config
 
-    print "Error: Unable to find or open config file. Expecting " + \
-          "'%s' in current working dir, " % default_filename + \
-          "in script directory ('%s') " % script_dir + \
-          "or filename given with -c option."
-    raise OverheadOptimizerException()
+    print "Unable to find or open config file. Using defaults."
+    return config
 
 def get_namespaces(config, options_namespaces):
     namespaces = []
