@@ -257,13 +257,12 @@ class ClassCreator(object):
         tp = self.init_tpl_processor()
 
         tpl_dir = os.path.join(self.script_dir, 'templates')
-        tpl_files = [ 'class.h.tpl', 'class.cpp.tpl' ]
-        target_files = [ self.init_header_file_name(), \
-                        self.init_class_file_name() ]
+        tpl_files = ['class.h.tpl']
+        target_files = [self.init_header_file_name()]
 
-        if self.is_interface:
-            tpl_files.remove('class.cpp.tpl')
-            target_files.remove(self.init_class_file_name())
+        if not self.is_interface:
+            tpl_files.append('class.cpp.tpl')
+            target_files.append(self.init_class_file_name())
 
         for target, tpl_file in zip(target_files, tpl_files):
             tpl_filepath = os.path.join(tpl_dir, tpl_file)
